@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#101820" />
+  <meta name="description" content="Farhan Simulator — game open-world 3D berbasis browser." />
+  <title>Farhan Simulator | Open World</title>
+  <style>
+    :root { color-scheme: dark; --panel: rgba(9, 16, 24, .78); --line: rgba(255,255,255,.15); --accent: #70e1c1; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #101820; font-family: Inter, system-ui, Arial, sans-serif; color: #fff; }
+    body { touch-action: none; }
+    #game { position: fixed; inset: 0; }
+    #game canvas { display: block; width: 100%; height: 100%; }
+    .hud { position: fixed; z-index: 3; pointer-events: none; }
+    #brand { top: 16px; left: 16px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); backdrop-filter: blur(12px); }
+    #brand strong { display: block; font-size: 14px; letter-spacing: 1.6px; }
+    #brand span { color: #a8bac5; font-size: 10px; letter-spacing: 2px; }
+    #stats { top: 16px; right: 16px; min-width: 130px; padding: 12px 14px; text-align: right; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); backdrop-filter: blur(12px); }
+    #speed { font-size: 28px; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; }
+    #speed small { font-size: 10px; color: #9eb1bd; font-weight: 600; }
+    #mission { left: 16px; bottom: 18px; width: min(310px, calc(100vw - 32px)); padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); backdrop-filter: blur(12px); }
+    #mission .eyebrow { color: var(--accent); font-size: 10px; font-weight: 800; letter-spacing: 1.8px; }
+    #missionText { margin-top: 4px; font-size: 13px; font-weight: 650; }
+    #missionHint { margin-top: 5px; font-size: 10px; color: #a8bac5; }
+    #mapWrap { right: 16px; bottom: 18px; width: 150px; height: 150px; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); backdrop-filter: blur(12px); }
+    #minimap { width: 100%; height: 100%; display: block; border-radius: 9px; }
+    #notice { position: fixed; z-index: 5; top: 86px; left: 50%; transform: translate(-50%, -10px); opacity: 0; padding: 10px 16px; border-radius: 30px; background: rgba(8,16,23,.88); border: 1px solid var(--line); font-size: 12px; font-weight: 700; transition: .25s; pointer-events: none; }
+    #notice.show { opacity: 1; transform: translate(-50%, 0); }
+    #menu { position: fixed; z-index: 10; inset: 0; display: grid; place-items: center; padding: 20px; background: linear-gradient(135deg, rgba(8,16,24,.88), rgba(10,31,37,.65)); backdrop-filter: blur(8px); }
+    .menu-card { width: min(470px, 100%); padding: 27px; border-radius: 22px; border: 1px solid rgba(255,255,255,.17); background: rgba(12,22,30,.88); box-shadow: 0 25px 80px rgba(0,0,0,.35); }
+    .menu-kicker { color: var(--accent); font-size: 10px; font-weight: 800; letter-spacing: 3px; }
+    h1 { margin: 8px 0 7px; font-size: clamp(29px, 7vw, 43px); line-height: 1; letter-spacing: -1.8px; }
+    .subtitle { margin: 0 0 20px; color: #b6c4cc; font-size: 13px; line-height: 1.6; }
+    .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+    .feature { padding: 10px; border: 1px solid var(--line); border-radius: 12px; color: #dce6ea; font-size: 11px; }
+    .feature b { display: block; margin-bottom: 3px; color: #fff; font-size: 12px; }
+    button { font: inherit; cursor: pointer; }
+    #start { width: 100%; padding: 14px 18px; border: 0; border-radius: 12px; background: var(--accent); color: #0a1c20; font-size: 13px; font-weight: 900; letter-spacing: .8px; }
+    #start:active { transform: scale(.99); }
+    .menu-foot { margin-top: 12px; text-align: center; color: #80929c; font-size: 10px; }
+    #fullscreen { position: fixed; z-index: 4; top: 88px; right: 16px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; color: white; background: var(--panel); font-size: 10px; }
+    #touchControls { position: fixed; z-index: 4; inset: auto 0 15px; display: none; justify-content: space-between; padding: 0 16px; pointer-events: none; }
+    .control-cluster { display: flex; gap: 9px; align-items: end; pointer-events: auto; }
+    .touch-btn { width: 57px; height: 57px; border: 1px solid rgba(255,255,255,.24); border-radius: 17px; color: white; background: rgba(8,16,24,.62); backdrop-filter: blur(8px); font-size: 19px; font-weight: 800; user-select: none; -webkit-user-select: none; }
+    .touch-btn.wide { width: 67px; height: 67px; background: rgba(35,112,95,.78); }
+    .touch-btn:active, .touch-btn.pressed { background: rgba(112,225,193,.72); color: #071a18; }
+    @media (pointer: coarse), (max-width: 760px) {
+      #touchControls { display: flex; }
+      #mission { bottom: 95px; width: min(250px, calc(100vw - 180px)); }
+      #mapWrap { width: 112px; height: 112px; bottom: 95px; }
+      #brand { top: 10px; left: 10px; }
+      #stats { top: 10px; right: 10px; }
+      #fullscreen { top: 76px; right: 10px; }
+    }
+    @media (max-width: 430px) {
+      #mission { width: calc(100vw - 145px); left: 10px; bottom: 93px; }
+      #mapWrap { right: 10px; width: 104px; height: 104px; bottom: 93px; }
+      #missionText { font-size: 11px; }
+      .touch-btn { width: 50px; height: 50px; }
+      .touch-btn.wide { width: 59px; height: 59px; }
+    }
+  </style>
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <div id="game"></div>
+  <div id="brand" class="hud"><strong>FARHAN SIMULATOR</strong><span>OPEN WORLD • BUILD 0.1</span></div>
+  <div id="stats" class="hud"><div id="speed">000 <small>KM/H</small></div><div id="vehicleName" style="margin-top:5px;color:#9eb1bd;font-size:10px">CITY RUNNER</div></div>
+  <div id="mission" class="hud"><div class="eyebrow">MISI AKTIF</div><div id="missionText">Jelajahi kota dan cari checkpoint.</div><div id="missionHint">Lewati lingkaran hijau untuk menyelesaikan misi.</div></div>
+  <div id="mapWrap" class="hud"><canvas id="minimap" width="180" height="180"></canvas></div>
+  <button id="fullscreen">⛶ LAYAR PENUH</button>
+  <div id="notice"></div>
+  <div id="touchControls">
+    <div class="control-cluster">
+      <button class="touch-btn" data-control="left" aria-label="Belok kiri">◀</button>
+      <button class="touch-btn" data-control="right" aria-label="Belok kanan">▶</button>
+    </div>
+    <div class="control-cluster">
+      <button class="touch-btn" data-control="brake" aria-label="Rem">▼</button>
+      <button class="touch-btn wide" data-control="gas" aria-label="Gas">▲</button>
+    </div>
+  </div>
+  <div id="menu">
+    <div class="menu-card">
+      <div class="menu-kicker">BROWSER OPEN-WORLD GAME</div>
+      <h1>FARHAN<br>SIMULATOR</h1>
+      <p class="subtitle">Masuki kota, kemudikan mobil, jelajahi jalanan, dan selesaikan misi perjalanan. Dunia 3D ringan yang dibuat khusus untuk game ini.</p>
+      <div class="feature-grid">
+        <div class="feature"><b>🚗 Free Drive</b>Jelajahi kota tanpa batas misi.</div>
+        <div class="feature"><b>📍 Checkpoint</b>Kumpulkan poin dari misi berkendara.</div>
+        <div class="feature"><b>🗺️ Mini Map</b>Lihat posisi dan tujuanmu.</div>
+        <div class="feature"><b>📱 Mobile Ready</b>Kontrol layar sentuh tersedia.</div>
+      </div>
+      <button id="start">MULAI BERMAIN</button>
+      <div class="menu-foot">WASD / tombol panah untuk mengemudi • Hindari gedung</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    const gameRoot = document.getElementById('game');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x91b9c5);
+    scene.fog = new THREE.Fog(0x91b9c5, 170, 540);
+
+    const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 800);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.7));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    gameRoot.appendChild(renderer.domElement);
+
+    const hemi = new THREE.HemisphereLight(0xd8f2ff, 0x52604f, 2.0);
+    scene.add(hemi);
+    const sun = new THREE.DirectionalLight(0xffefcf, 2.1);
+    sun.position.set(-90, 150, 70);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.camera.left = -150; sun.shadow.camera.right = 150;
+    sun.shadow.camera.top = 150; sun.shadow.camera.bottom = -150;
+    scene.add(sun);
+
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(620, 620), new THREE.MeshStandardMaterial({ color: 0x536c50, roughness: 1 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.y = -0.08; ground.receiveShadow = true; scene.add(ground);
+
+    const roadMat = new THREE.MeshStandardMaterial({ color: 0x343b40, roughness: 1 });
+    const lineMat = new THREE.MeshBasicMaterial({ color: 0xd7d2a6 });
+    const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0x89918d, roughness: 1 });
+    const roadCoords = [-200, -120, -40, 40, 120, 200];
+    const roadW = 18;
+    for (const c of roadCoords) {
+      const vertical = new THREE.Mesh(new THREE.PlaneGeometry(roadW, 500), roadMat);
+      vertical.rotation.x = -Math.PI / 2; vertical.position.set(c, 0, 0); vertical.receiveShadow = true; scene.add(vertical);
+      const horizontal = new THREE.Mesh(new THREE.PlaneGeometry(500, roadW), roadMat);
+      horizontal.rotation.x = -Math.PI / 2; horizontal.position.set(0, 0.005, c); horizontal.receiveShadow = true; scene.add(horizontal);
+      const sideA = new THREE.Mesh(new THREE.PlaneGeometry(3, 500), sidewalkMat);
+      sideA.rotation.x = -Math.PI / 2; sideA.position.set(c - roadW/2 - 1.5, 0.015, 0); scene.add(sideA);
+      const sideB = sideA.clone(); sideB.position.x = c + roadW/2 + 1.5; scene.add(sideB);
+      const sideC = new THREE.Mesh(new THREE.PlaneGeometry(500, 3), sidewalkMat);
+      sideC.rotation.x = -Math.PI / 2; sideC.position.set(0, 0.02, c - roadW/2 - 1.5); scene.add(sideC);
+      const sideD = sideC.clone(); sideD.position.z = c + roadW/2 + 1.5; scene.add(sideD);
+      for (let p = -235; p < 235; p += 23) {
+        const dash1 = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 9), lineMat);
+        dash1.rotation.x = -Math.PI / 2; dash1.position.set(c, 0.035, p); scene.add(dash1);
+        const dash2 = new THREE.Mesh(new THREE.PlaneGeometry(9, 0.35), lineMat);
+        dash2.rotation.x = -Math.PI / 2; dash2.position.set(p, 0.04, c); scene.add(dash2);
+      }
+    }
+
+    const buildingColliders = [];
+    const buildingColors = [0x9badaf, 0xc0b49d, 0x8c9ca8, 0xb2a18f, 0x788c91, 0xd0c7b3, 0x879b8e];
+    const windowMat = new THREE.MeshStandardMaterial({ color: 0x9bd2d7, emissive: 0x294d53, roughness: 0.55 });
+    function addBuilding(x, z, w, d, h, color) {
+      const material = new THREE.MeshStandardMaterial({ color, roughness: 0.88 });
+      const building = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+      building.position.set(x, h / 2, z); building.castShadow = true; building.receiveShadow = true; scene.add(building);
+      buildingColliders.push({ x, z, halfW: w/2, halfD: d/2 });
+      // Repeating window panels on the front and back faces.
+      const cols = Math.max(2, Math.floor(w / 5));
+      const rows = Math.max(1, Math.floor(h / 5));
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        const wx = x - w/2 + (c + .5) * w/cols;
+        const wy = 2.2 + r * 4.1;
+        if (wy > h - 1.2) continue;
+        for (const side of [-1, 1]) {
+          const win = new THREE.Mesh(new THREE.PlaneGeometry(1.35, 1.65), windowMat);
+          win.position.set(wx, wy, z + side * (d/2 + 0.012));
+          if (side < 0) win.rotation.y = Math.PI;
+          scene.add(win);
+        }
+      }
+    }
+    const blockCenters = [-160, -80, 0, 80, 160];
+    for (const bx of blockCenters) for (const bz of blockCenters) {
+      // Four modest buildings per block leave a small inner courtyard.
+      for (const ox of [-17, 17]) for (const oz of [-17, 17]) {
+        const w = 19 + Math.random() * 7;
+        const d = 19 + Math.random() * 7;
+        const h = 13 + Math.random() * 37;
+        const color = buildingColors[Math.floor(Math.random() * buildingColors.length)];
+        addBuilding(bx + ox, bz + oz, w, d, h, color);
+      }
+    }
+
+    // Decorative trees along selected sidewalks.
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x62462c });
+    const leafMats = [0x47744c, 0x5d8653, 0x3d694e].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 1 }));
+    for (let i = 0; i < 55; i++) {
+      const road = roadCoords[Math.floor(Math.random() * roadCoords.length)];
+      const t = -220 + Math.random() * 440;
+      const alongX = Math.random() > .5;
+      const x = alongX ? t : road + (Math.random() > .5 ? 14 : -14);
+      const z = alongX ? road + (Math.random() > .5 ? 14 : -14) : t;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.35, .48, 3.4, 7), trunkMat);
+      trunk.position.set(x, 1.7, z); trunk.castShadow = true; scene.add(trunk);
+      const leaves = new THREE.Mesh(new THREE.SphereGeometry(2.2 + Math.random(), 7, 6), leafMats[i % leafMats.length]);
+      leaves.position.set(x, 4.1, z); leaves.castShadow = true; scene.add(leaves);
+    }
+
+    // Original, low-poly player car.
+    const car = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd84c38, metalness: .25, roughness: .42 });
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0x243d49, metalness: .2, roughness: .25 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.25, .72, 4.4), bodyMat);
+    body.position.y = .82; body.castShadow = true; car.add(body);
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.72, .72, 2.05), glassMat);
+    cabin.position.set(0, 1.48, -.15); cabin.castShadow = true; car.add(cabin);
+    const hood = new THREE.Mesh(new THREE.BoxGeometry(2.12, .15, 1.15), bodyMat);
+    hood.position.set(0, 1.02, 1.45); car.add(hood);
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x141719, roughness: 1 });
+    const wheels = [];
+    for (const x of [-1.12, 1.12]) for (const z of [-1.42, 1.42]) {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(.43, .43, .28, 12), wheelMat);
+      wheel.rotation.z = Math.PI / 2; wheel.position.set(x, .42, z); wheel.castShadow = true; car.add(wheel); wheels.push(wheel);
+    }
+    const lightMat = new THREE.MeshBasicMaterial({ color: 0xfff4c8 });
+    for (const x of [-.72, .72]) {
+      const light = new THREE.Mesh(new THREE.BoxGeometry(.42, .18, .08), lightMat);
+      light.position.set(x, .88, 2.22); car.add(light);
+    }
+    car.position.set(0, 0, 0); scene.add(car);
+
+    const checkpointMat = new THREE.MeshBasicMaterial({ color: 0x69ffd0, transparent: true, opacity: .92 });
+    const checkpoint = new THREE.Mesh(new THREE.TorusGeometry(4.4, .42, 10, 36), checkpointMat);
+    checkpoint.rotation.x = Math.PI / 2; checkpoint.position.y = .45; scene.add(checkpoint);
+    const checkpointBeam = new THREE.Mesh(new THREE.CylinderGeometry(.12, .12, 7, 8), new THREE.MeshBasicMaterial({ color: 0x69ffd0, transparent: true, opacity: .22 }));
+    checkpointBeam.position.y = 3.8; scene.add(checkpointBeam);
+
+    const controls = { left: false, right: false, gas: false, brake: false };
+    let speed = 0;
+    let score = 0;
+    let started = false;
+    let target = new THREE.Vector3(120, 0, 120);
+    let lastTime = performance.now();
+    let noticeTimer = 0;
+    const speedEl = document.getElementById('speed');
+    const missionText = document.getElementById('missionText');
+    const missionHint = document.getElementById('missionHint');
+    const noticeEl = document.getElementById('notice');
+    const mapCanvas = document.getElementById('minimap');
+    const mapCtx = mapCanvas.getContext('2d');
+
+    function showNotice(message) {
+      noticeEl.textContent = message; noticeEl.classList.add('show');
+      clearTimeout(noticeTimer); noticeTimer = setTimeout(() => noticeEl.classList.remove('show'), 1700);
+    }
+    function setNewTarget() {
+      let candidates = [];
+      for (const x of roadCoords) for (const z of roadCoords) {
+        if (Math.hypot(x - car.position.x, z - car.position.z) > 90) candidates.push([x, z]);
+      }
+      const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+      target.set(chosen[0], 0, chosen[1]);
+      checkpoint.position.set(target.x, .55, target.z);
+      checkpointBeam.position.set(target.x, 3.8, target.z);
+      missionText.textContent = `Pergi ke checkpoint berikutnya • ${score} poin`;
+      missionHint.textContent = 'Ikuti penanda lingkaran hijau di kota.';
+    }
+    setNewTarget();
+
+    function updateMiniMap() {
+      const ctx = mapCtx; const w = mapCanvas.width; const h = mapCanvas.height;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#182a2d'; ctx.fillRect(0, 0, w, h);
+      const scale = w / 540;
+      ctx.strokeStyle = '#647277'; ctx.lineWidth = roadW * scale;
+      for (const c of roadCoords) {
+        const p = (c + 270) * scale;
+        ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, h); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(w, p); ctx.stroke();
+      }
+      const toMap = (v) => (v + 270) * scale;
+      ctx.fillStyle = '#6bffd0'; ctx.beginPath(); ctx.arc(toMap(target.x), toMap(target.z), 4.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ff6e55'; ctx.beginPath(); ctx.arc(toMap(car.position.x), toMap(car.position.z), 5.5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#ffb5a8'; ctx.lineWidth = 2; ctx.beginPath();
+      ctx.moveTo(toMap(car.position.x), toMap(car.position.z));
+      ctx.lineTo(toMap(car.position.x + Math.sin(car.rotation.y) * 14), toMap(car.position.z + Math.cos(car.rotation.y) * 14)); ctx.stroke();
+    }
+
+    function collides(x, z) {
+      for (const b of buildingColliders) {
+        if (Math.abs(x - b.x) < b.halfW + 1.4 && Math.abs(z - b.z) < b.halfD + 1.4) return true;
+      }
+      return false;
+    }
+
+    function update(dt) {
+      if (!started) return;
+      const throttle = controls.gas ? 1 : controls.brake ? -1 : 0;
+      if (throttle > 0) speed += (speed < -1 ? 42 : 24) * dt;
+      else if (throttle < 0) speed -= (speed > 1 ? 42 : 14) * dt;
+      else speed *= Math.exp(-1.0 * dt);
+      speed = THREE.MathUtils.clamp(speed, -12, 38);
+
+      const steer = (controls.left ? 1 : 0) - (controls.right ? 1 : 0);
+      if (Math.abs(speed) > .25) car.rotation.y += steer * (Math.abs(speed) / 38) * 2.0 * dt * Math.sign(speed);
+      const moveX = Math.sin(car.rotation.y) * speed * dt;
+      const moveZ = Math.cos(car.rotation.y) * speed * dt;
+      const nextX = THREE.MathUtils.clamp(car.position.x + moveX, -248, 248);
+      const nextZ = THREE.MathUtils.clamp(car.position.z + moveZ, -248, 248);
+      if (!collides(nextX, car.position.z)) car.position.x = nextX; else speed *= -.18;
+      if (!collides(car.position.x, nextZ)) car.position.z = nextZ; else speed *= -.18;
+      for (const wheel of wheels) wheel.rotation.x -= speed * dt * .8;
+
+      const desiredCamera = new THREE.Vector3(0, 6.7, -13.5).applyAxisAngle(new THREE.Vector3(0, 1, 0), car.rotation.y).add(car.position);
+      camera.position.lerp(desiredCamera, 1 - Math.exp(-5 * dt));
+      camera.lookAt(car.position.x, car.position.y + 1.1, car.position.z);
+      checkpoint.rotation.z += dt * .65;
+      checkpointBeam.material.opacity = .17 + Math.sin(performance.now() * .004) * .07;
+
+      const distance = Math.hypot(target.x - car.position.x, target.z - car.position.z);
+      if (distance < 8) {
+        score += 100; showNotice('CHECKPOINT SELESAI  +100'); setNewTarget();
+      }
+      speedEl.innerHTML = `${String(Math.round(Math.abs(speed) * 3.6)).padStart(3, '0')} <small>KM/H</small>`;
+      missionHint.textContent = `Jarak tujuan: ${Math.round(distance)} m  •  Skor: ${score}`;
+      updateMiniMap();
+    }
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      const dt = Math.min((now - lastTime) / 1000, .045); lastTime = now;
+      update(dt);
+      renderer.render(scene, camera);
+    }
+    requestAnimationFrame(animate);
+
+    function setKey(key, down) {
+      const k = key.toLowerCase();
+      if (['arrowup', 'w'].includes(k)) controls.gas = down;
+      if (['arrowdown', 's'].includes(k)) controls.brake = down;
+      if (['arrowleft', 'a'].includes(k)) controls.left = down;
+      if (['arrowright', 'd'].includes(k)) controls.right = down;
+    }
+    addEventListener('keydown', e => {
+      if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+      setKey(e.key, true);
+    });
+    addEventListener('keyup', e => setKey(e.key, false));
+    addEventListener('blur', () => Object.keys(controls).forEach(k => controls[k] = false));
+
+    document.querySelectorAll('[data-control]').forEach(button => {
+      const key = button.dataset.control;
+      const press = e => { e.preventDefault(); controls[key] = true; button.classList.add('pressed'); };
+      const release = e => { e.preventDefault(); controls[key] = false; button.classList.remove('pressed'); };
+      button.addEventListener('pointerdown', press);
+      button.addEventListener('pointerup', release);
+      button.addEventListener('pointercancel', release);
+      button.addEventListener('pointerleave', release);
+    });
+
+    document.getElementById('start').addEventListener('click', () => {
+      started = true;
+      document.getElementById('menu').style.display = 'none';
+      showNotice('Mesin menyala. Selamat menjelajah!');
+    });
+    document.getElementById('fullscreen').addEventListener('click', async () => {
+      try {
+        if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+        else await document.exitFullscreen();
+      } catch { showNotice('Mode layar penuh tidak didukung browser ini.'); }
+    });
+
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 1.7));
+    });
+  </script>
+</body>
+</html>
